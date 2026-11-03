@@ -558,19 +558,11 @@ filter.oninput();window.addEventListener('hashchange',route);route();progress();
 body:has(#studyPad:not([hidden])){padding-bottom:65dvh}body:has(#noteOpen:not([hidden])){padding-bottom:4rem}
 .unitNote textarea{display:block;width:100%;box-sizing:border-box;min-height:8rem;padding:.75rem;font:inherit;margin:.6rem 0}.unitNote small{margin-right:1rem}[data-page="#/settings"] button{padding:.6rem .85rem;cursor:pointer}#padGrip{cursor:grab!important;touch-action:none;user-select:none}#padGrip:active{cursor:grabbing!important}#studyPad[hidden],#noteOpen[hidden]{display:none}
 .unitNote{margin:2rem 0}
-.unitNote .noteRow{border:1px solid #d6dde2;border-radius:.65rem;background:white;margin:.4rem 0;overflow:hidden}
-.noteRow summary{display:grid;grid-template-columns:3.2rem minmax(0,1fr) auto;gap:.2rem .65rem;align-items:center;padding:.65rem .85rem;cursor:pointer;list-style:none}
-.noteRow summary::-webkit-details-marker{display:none}
-.noteRow summary:focus-visible{outline:2px solid #245885;outline-offset:-3px}
-.noteRow summary::after{content:'＋';grid-column:3;grid-row:1/3;color:#536579}
-.noteRow[open] summary::after{content:'−'}
-.noteRow summary b{grid-row:1/3;text-align:center;background:#f0ece6;color:#674b32;border-radius:.35rem;padding:.25rem;font-size:.82rem}
-.noteRow.hasNote summary b{background:#183855;color:white}
-.noteRow summary strong,.noteRow summary span{grid-column:2}
-.noteRow summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.89rem;color:#536579}
-.noteRow[open] summary{background:#f2f5f7}
-.noteRow textarea{width:calc(100% - 1.5rem);margin:.75rem}
-.noteRow small{display:block;margin:0 .75rem .75rem}
+.noteTiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
+.noteTile{min-width:0;color:#163451;font-size:.88rem}
+.noteTile textarea{margin:.25rem 0 0;padding:.45rem;min-height:0;height:5rem;resize:vertical;border:1px solid #b7c1c9;border-radius:.3rem;background:white}
+.noteTile small{font-size:.75rem}
+@media(max-width:700px){.noteTiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .noteGrid{display:block}.orderButton{display:inline-block;margin-left:.6rem;padding:.25rem .65rem;background:#fff;color:#163451;border:1px solid #ae8967;border-radius:.5rem;font:inherit;font-size:.85rem;cursor:pointer}#lectureOrder{margin:.4rem 0;font-weight:600}
 .noteGrid textarea{display:block;height:clamp(8rem,36dvh,20rem);resize:vertical;line-height:1.55;padding:.7rem}</style>
 <button id="noteOpen" aria-controls="studyPad" aria-expanded="false" hidden>✎ 내 노트</button>
@@ -602,15 +594,9 @@ function sync() {
   const lesson = !!page.querySelector('.vid > a');
   open.hidden = !pad.hidden || !lesson;
   if (lesson) {
-    for (const editor of page.querySelectorAll('.unitNote textarea')) { editor.value = readNote(editor.dataset.key); updatePreview(editor) }
+    for (const editor of page.querySelectorAll('.unitNote textarea')) { editor.value = readNote(editor.dataset.key); }
     loadPage(page);
   }
-}
-function updatePreview(editor) {
-  const row = editor.closest('.noteRow');
-  const text = editor.value.trim().replace(/\s+/g,' ');
-  row.classList.toggle('hasNote', Boolean(text));
-  row.querySelector('summary span').textContent = text ? (text.length > 120 ? text.slice(0,120)+'…' : text) : '메모 쓰기';
 }
 const selectedLectures = new WeakMap();
 const lectureOrders = new WeakMap();
@@ -667,7 +653,7 @@ function place(x,y){if(pad.hidden)return;const r=pad.getBoundingClientRect();pos
 function remember(){try{localStorage.setItem('kfri:pad-position',JSON.stringify(pos))}catch{}}
 try{const xy=JSON.parse(localStorage.getItem('kfri:pad-position'));if(Array.isArray(xy)&&xy.length===2&&xy.every(Number.isFinite))pos=xy}catch{}
 open.onclick=()=>{loadPage(page);open.hidden=true;pad.hidden=false;if(pos)place(...pos);open.setAttribute('aria-expanded','true');note.focus({preventScroll:true})};
-note.oninput=()=>{dirty=true;save();const editor=editors.get(noteKey);if(editor){editor.value=note.value;updatePreview(editor);editor.nextElementSibling.textContent=state.textContent}};
+note.oninput=()=>{dirty=true;save();const editor=editors.get(noteKey);if(editor){editor.value=note.value;editor.nextElementSibling.textContent=dirty?state.textContent:''}};
 $('noteClose').onclick=()=>{save();pad.hidden=true;open.setAttribute('aria-expanded','false');sync();if(!open.hidden)open.focus({preventScroll:true})};
 grip.onpointerdown=e=>{if(!e.isPrimary||e.button!==0)return;const r=pad.getBoundingClientRect();drag=[e.pointerId,e.clientX-r.left,e.clientY-r.top];grip.setPointerCapture(e.pointerId)};
 grip.onpointermove=e=>{if(drag?.[0]===e.pointerId)place(e.clientX-drag[1],e.clientY-drag[2])};
@@ -678,31 +664,26 @@ const prefix = 'kfri:lecture-note:';
 for (const unit of pages.filter(p => p.dataset.page.startsWith('#/course/'))) {
   const block = document.createElement('div');
   block.className = 'unitNote';
-  block.innerHTML = '<h2>내 노트</h2><p>메모를 한 줄씩 훑어보고, 수정할 항목을 펼치세요.</p>';
+  block.innerHTML = '<h2>내 노트</h2><div class="noteTiles"></div>';
   unit.querySelector('.controls').before(block);
+  const tiles = block.querySelector('.noteTiles');
   const unitKey = prefix + unit.dataset.page;
   function addEditor(key, title, badge) {
-    const row = document.createElement('details');
-    row.className = 'noteRow';
-    row.name = unitKey;
-    const summary = document.createElement('summary');
-    const tag = document.createElement('b');
-    tag.textContent = badge;
-    const heading = document.createElement('strong');
-    heading.textContent = title;
-    const preview = document.createElement('span');
-    summary.append(tag,heading,preview);
+    const row = document.createElement('label');
+    row.className = 'noteTile';
+    row.title = title;
+    row.append(badge);
     const editor = document.createElement('textarea');
     editor.dataset.key = key;
     editor.setAttribute('aria-label',title);
-    editor.placeholder = '메모를 적어 보세요.';
+    editor.placeholder = '메모…';
     const status = document.createElement('small');
-    status.textContent = '이 브라우저에 자동 저장됩니다.';
-    row.append(summary,editor,status);
-    block.append(row);
+    status.textContent = '';
+    row.append(editor,status);
+    tiles.append(row);
     editors.set(key,editor);
     editor.oninput = () => {
-      updatePreview(editor);
+      
       if (key === noteKey) {
         note.value = editor.value;
         note.oninput();
@@ -711,7 +692,7 @@ for (const unit of pages.filter(p => p.dataset.page.startsWith('#/course/'))) {
       try {
         localStorage.setItem(key,editor.value);
         drafts.delete(key);
-        status.textContent = '이 브라우저에 저장됨';
+        status.textContent = '';
       } catch {
         drafts.set(key,editor.value);
         status.textContent = '저장 실패 · 창을 닫기 전에 복사하세요.';
@@ -723,7 +704,7 @@ for (const unit of pages.filter(p => p.dataset.page.startsWith('#/course/'))) {
     const link = row.querySelector(':scope > a');
     const video = new URL(link.href).searchParams.get('v');
     row.dataset.noteKey = unitKey + '/video/' + video;
-    addEditor(row.dataset.noteKey,link.textContent.replace(/^▷\s*/,''),String(block.querySelectorAll('.noteRow').length)+'강');
+    addEditor(row.dataset.noteKey,link.textContent.replace(/^▷\s*/,''),String(tiles.children.length)+'강');
   }
   const settings = document.createElement('a');
   settings.href = '#/settings';
@@ -817,7 +798,7 @@ $('notesFile').onchange = async e => {
       catch { message.textContent = count + '개 메모를 복원한 뒤 저장이 중단됐어요. 브라우저 저장 공간을 확인해 주세요.'; return }
       drafts.delete(key);
       editors.get(key).value = value;
-      updatePreview(editors.get(key));
+      
       if (key === noteKey) { note.value = value; dirty = false }
       count++;
     }
