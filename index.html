@@ -13,6 +13,10 @@
 <section data-page="#/home">
 <div class="hero"><span class="kicker">PRACTICAL STUDY NOTES　 /　01—03</span><h1>컴활 1급 실기 학습실</h1><p>Excel과 Access를 유형별로 익히고 회차별 문제로 실력을 확인하세요.</p></div>
 <div class="box"><b>합격 기준</b>　Excel 45분 · Access 45분, 두 과목 각각 70점 이상. <a target="_blank" rel="noopener noreferrer" href="https://license.korcham.net/co/examguide.do?cd=0103&amp;mm=21DB">대한상공회의소 시험 안내</a></div>
+<details class="ref"><summary>원본 강의 재생목록 · 작은 창으로 열기 ↗</summary>
+<a class="block" href="https://www.youtube.com/playlist?list=PLw6GYDGzN0lG05sfcgbwL-NKK3DYv43TJ" target="_blank" rel="noopener noreferrer">1단계 · 유형 익히기</a>
+<a class="block" href="https://www.youtube.com/playlist?list=PLw6GYDGzN0lGNJXdCLXp_HDAhEHpGb5ZR" target="_blank" rel="noopener noreferrer">2단계 · 예상문제</a>
+<a class="block" href="https://www.youtube.com/playlist?list=PLw6GYDGzN0lFe37y3M8hxtDckHY21fHDK" target="_blank" rel="noopener noreferrer">3단계 · 특강과 단위문제</a></details>
 <article><span class="kicker">PART 01</span>
 <h2 style="margin:4px 0">유형 익히기</h2><p>네 회분의 같은 작업을 묶어 공통 기능을 익힙니다. 부록을 혼자 풀 수 있으면 다음 단계로 이동하세요.</p><a class="block" href="#/course/1/1">시작 · 오리엔테이션</a><a class="block" href="#/course/1/2">Excel · 기본작업</a><a class="block" href="#/course/1/3">Excel · 계산작업</a><a class="block" href="#/course/1/4">Excel · 분석작업</a><a class="block" href="#/course/1/5">Excel · 기타작업</a><a class="block" href="#/course/1/6">Access · DB 구축</a><a class="block" href="#/course/1/7">Access · 입력 및 수정</a><a class="block" href="#/course/1/8">Access · 조회 및 출력</a><a class="block" href="#/course/1/9">Access · 처리 기능</a></article>
 <article><span class="kicker">PART 02</span>
@@ -567,12 +571,14 @@ function save(){if(!dirty)return;drafts.set(noteKey,note.value);try{localStorage
 function loadPage(p){noteKey='kfri:lecture-note:'+p.dataset.page;dirty=false;label.textContent='필기 · '+p.querySelector('h1').textContent;state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}}
 function sync(){save();page=pages.find(p=>!p.hidden);const lesson=!!page.querySelector('.vid > a');open.hidden=!pad.hidden||!lesson;if(lesson){loadPage(page);page.querySelector(".unitNote textarea").value=note.value}}
 let lectureWindow;
-main.addEventListener('click', event => {
-  const link = event.target.closest('a[href^="https://www.youtube.com/watch?"]');
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="https://www.youtube.com/"]');
   if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
   try {
     if (!lectureWindow || lectureWindow.closed) {
-      lectureWindow = window.open('about:blank', '_blank', 'popup,width=800,height=520,resizable=yes');
+      const left = Math.max(0, window.screenX);
+      const top = Math.max(0, window.screenY);
+      lectureWindow = window.open('about:blank', '_blank', 'popup,width=800,height=520,resizable=yes,left=' + left + ',top=' + top);
       if (!lectureWindow) return;
       lectureWindow.opener = null;
     }
