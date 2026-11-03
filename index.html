@@ -538,4 +538,28 @@ menu.onclick=()=>menu.setAttribute('aria-expanded',String(side.classList.toggle(
 document.querySelector('.skip').onclick=e=>{e.preventDefault();main.focus()};
 main.addEventListener('click',e=>{const b=e.target.closest('[data-complete]');if(!b)return;const i=Number(b.dataset.complete);if(done.has(i))done.delete(i);else done.add(i);try{localStorage.setItem(key,JSON.stringify([...done]))}catch{}progress()});
 const filter=document.querySelector('#filter');filter.oninput=()=>{let n=0;for(const a of document.querySelectorAll('[data-term]')){a.hidden=!a.textContent.toLowerCase().includes(filter.value.trim().toLowerCase());if(!a.hidden)n++}document.querySelector('#matches').textContent=n+'개 항목'};
-filter.oninput();window.addEventListener('hashchange',route);route();progress();</script></body></html>
+filter.oninput();window.addEventListener('hashchange',route);route();progress();</script><style>
+#noteOpen,#studyPad{position:fixed;right:1rem;bottom:1rem;z-index:12}
+#noteOpen,#studyPad button{background:#163451;color:white;border:0;padding:.65rem 1rem;border-radius:.6rem;cursor:pointer}
+#studyPad{box-sizing:border-box;width:min(48rem,calc(100% - 2rem));max-height:65dvh;overflow:auto;background:white;color:#163451;border:2px solid #ae8967;border-radius:.8rem;padding:.8rem;box-shadow:0 6px 26px #142a4140}
+#studyPad header{position:static;display:flex;align-items:center;justify-content:space-between;background:white;color:#163451;padding:0;margin:0 0 .5rem;height:auto}
+.noteGrid{display:grid;grid-template-columns:1.4fr 1fr;gap:.8rem}.noteGrid>*{min-width:0}.noteGrid select,.noteGrid textarea{width:100%;box-sizing:border-box;font:inherit}.noteGrid iframe{display:block;width:100%;aspect-ratio:16/9;border:0;margin:.35rem 0}.noteGrid textarea{height:9rem;padding:.5rem}.noteGrid small{display:block}
+body:has(#studyPad:not([hidden])){padding-bottom:65dvh}body:has(#noteOpen:not([hidden])){padding-bottom:4rem}
+@media(max-width:650px){.noteGrid{grid-template-columns:1fr}.noteGrid iframe{height:min(19dvh,52vw)}.noteGrid textarea{height:4.5rem}}
+#studyPad[hidden],#noteOpen[hidden]{display:none}
+</style>
+<button id="noteOpen" aria-controls="studyPad" aria-expanded="false" hidden>✎ 강의 보며 필기</button>
+<section id="studyPad" aria-label="강의 보며 필기" hidden><header><strong>강의 보며 필기</strong><button id="noteClose">닫기</button></header>
+<div class="noteGrid"><div><select id="lecturePick" aria-label="단원 강의 선택"></select><iframe id="lectureFrame" title="단원 강의 영상" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><a id="originalVideo" target="_blank" rel="noopener">YouTube에서 보기 ↗</a></div><div><label for="lectureNote">이 단원 필기</label><textarea id="lectureNote" placeholder="다시 풀 때 기억할 함수나 작업 순서를 적어 보세요."></textarea><small id="saveState">이 브라우저에 자동 저장됩니다.</small></div></div></section>
+<script>
+(()=>{
+const $=s=>document.getElementById(s),open=$('noteOpen'),pad=$('studyPad'),pick=$('lecturePick'),frame=$('lectureFrame'),note=$('lectureNote'),state=$('saveState'),drafts=new Map();
+let page,noteKey;
+function close(){pad.hidden=true;open.setAttribute('aria-expanded','false');frame.removeAttribute('src')}
+function sync(){close();page=pages.find(p=>!p.hidden);open.hidden=!page?.querySelector('.vid > a');noteKey='kfri:lecture-note:'+page.dataset.page}
+function play(){const url=new URL(pick.value);frame.src='https://www.youtube.com/embed/'+encodeURIComponent(url.searchParams.get('v'));$('originalVideo').href=url.href}
+open.onclick=()=>{pick.replaceChildren(...Array.from(page.querySelectorAll('.vid > a'),a=>new Option(a.textContent.replace(/^▷\s*/,''),a.href)));state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}play();open.hidden=true;pad.hidden=false;open.setAttribute('aria-expanded','true');$('noteClose').focus({preventScroll:true})};
+pick.onchange=play;note.oninput=()=>{drafts.set(noteKey,note.value);try{localStorage.setItem(noteKey,note.value);state.textContent='이 브라우저에 저장됨'}catch{state.textContent='저장 실패 · 창을 닫기 전에 복사하세요.'}};
+$('noteClose').onclick=()=>{close();open.hidden=false;open.focus({preventScroll:true})};window.addEventListener('hashchange',sync);sync()
+})();
+</script></body></html>
