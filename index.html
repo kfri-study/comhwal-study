@@ -535,7 +535,7 @@
 <p>단원 메모는 입력할 때마다 이 브라우저에 저장돼요. PC 파일은 백업 버튼을 누를 때 갱신돼요.</p>
 <div class="box"><strong>백업 파일</strong><p id="fileName">지정한 파일 없음</p>
 <button id="backupNotes" disabled>백업 위치 지정하고 저장</button> <button id="changeBackup" hidden>다른 위치에 저장</button></div>
-<h2>파일에서 내 노트 복원</h2><p>컴활 노트 백업 파일(.json)을 선택하세요. 같은 단원의 메모는 확인 후 파일 내용으로 바뀌고, 파일에 없는 단원은 그대로 남아요.</p>
+<h2>파일에서 내 노트 복원</h2><p>컴활 노트 백업 파일(.json)을 선택하세요. 같은 단원·차순의 메모는 확인 후 파일 내용으로 바뀌고, 파일에 없는 메모는 그대로 남아요.</p>
 <button id="restoreNotes">백업 파일 열기</button><input type="file" id="notesFile" accept=".json,application/json" hidden>
 <p id="backupMessage" role="status"></p></section><footer>원본 강의 · 컴활의 정석　|　학습 완료 표시는 이 브라우저에 저장됩니다.</footer></main></div>
 <script>const main=document.querySelector('main'),nav=document.querySelector('nav'),side=document.querySelector('aside'),menu=document.querySelector('.mobile');
@@ -568,8 +568,30 @@ const $=s=>document.getElementById(s),open=$('noteOpen'),pad=$('studyPad'),note=
 let page,noteKey,dirty=false,pos=null,drag=null;
 const grip=$('padGrip'), label=pad.querySelector('label');
 function save(){if(!dirty)return;drafts.set(noteKey,note.value);try{localStorage.setItem(noteKey,note.value);drafts.delete(noteKey);state.textContent='이 브라우저에 저장됨';dirty=false}catch{state.textContent='저장 실패 · 창을 닫기 전에 복사하세요.'}}
-function loadPage(p){showOrder(p);noteKey='kfri:lecture-note:'+p.dataset.page;dirty=false;label.textContent='필기 · '+p.querySelector('h1').textContent;state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}}
-function sync(){save();page=pages.find(p=>!p.hidden);const lesson=!!page.querySelector('.vid > a');open.hidden=!pad.hidden||!lesson;if(lesson){loadPage(page);page.querySelector(".unitNote textarea").value=note.value}}
+function readNote(key) {
+  try { return drafts.get(key) ?? localStorage.getItem(key) ?? '' }
+  catch { return drafts.get(key) ?? '' }
+}
+function loadPage(unit) {
+  save();
+  const row = selectedLectures.get(unit) || unit.querySelector('.vid');
+  showOrder(unit);
+  noteKey = row.dataset.noteKey;
+  dirty = false;
+  label.textContent = '이 강의 필기';
+  note.value = readNote(noteKey);
+  state.textContent = drafts.has(noteKey) ? '저장 실패 · 창을 닫기 전에 복사하세요.' : '이 브라우저에 자동 저장됩니다.';
+}
+function sync() {
+  save();
+  page = pages.find(p => !p.hidden);
+  const lesson = !!page.querySelector('.vid > a');
+  open.hidden = !pad.hidden || !lesson;
+  if (lesson) {
+    for (const editor of page.querySelectorAll('.unitNote textarea')) editor.value = readNote(editor.dataset.key);
+    loadPage(page);
+  }
+}
 const selectedLectures = new WeakMap();
 const lectureOrders = new WeakMap();
 function showOrder(unit) {
@@ -580,7 +602,7 @@ function selectLecture(row) {
   if (!row) return;
   const unit = row.closest('[data-page]');
   selectedLectures.set(unit,row);
-  showOrder(unit);
+  loadPage(unit);
 }
 for (const unit of pages) {
   const rows = [...unit.querySelectorAll('.vid')];
@@ -593,7 +615,7 @@ for (const unit of pages) {
     button.type = 'button';
     button.className = 'orderButton';
     button.textContent = '차순 정보';
-    button.setAttribute('aria-label',title+' 차순 정보와 단원 노트');
+    button.setAttribute('aria-label',title+' 차순 정보와 강의 노트');
     button.setAttribute('aria-controls','studyPad');
     link.after(button);
     button.onclick = () => {
@@ -636,14 +658,48 @@ const prefix = 'kfri:lecture-note:';
 for (const unit of pages.filter(p => p.dataset.page.startsWith('#/course/'))) {
   const block = document.createElement('div');
   block.className = 'unitNote';
-  block.innerHTML = '<h2>내 노트</h2><textarea aria-label="이 단원의 내 노트" placeholder="다시 연습할 작업이나 헷갈린 함수를 적어 보세요."></textarea><small>이 브라우저에 자동 저장됩니다.</small><a href="#/settings">⚙ 백업 설정</a>';
+  block.innerHTML = '<h2>내 노트</h2><p>이 단원의 공통 메모와 강의별 필기를 순서대로 모았어요. 여기서도 바로 수정할 수 있어요.</p>';
   unit.querySelector('.controls').before(block);
-  const editor = block.querySelector('textarea');
-  editors.set(prefix + unit.dataset.page, editor);
-  editor.oninput = () => {
-    note.value = editor.value;
-    note.oninput();
-  };
+  const unitKey = prefix + unit.dataset.page;
+  function addEditor(key, title) {
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    const editor = document.createElement('textarea');
+    editor.dataset.key = key;
+    editor.setAttribute('aria-label',title);
+    editor.placeholder = '메모를 적어 보세요.';
+    const status = document.createElement('small');
+    status.textContent = '이 브라우저에 자동 저장됩니다.';
+    block.append(heading,editor,status);
+    editors.set(key,editor);
+    editor.oninput = () => {
+      if (key === noteKey) {
+        note.value = editor.value;
+        note.oninput();
+        return;
+      }
+      try {
+        localStorage.setItem(key,editor.value);
+        drafts.delete(key);
+        status.textContent = '이 브라우저에 저장됨';
+      } catch {
+        drafts.set(key,editor.value);
+        status.textContent = '저장 실패 · 창을 닫기 전에 복사하세요.';
+      }
+    };
+  }
+  addEditor(unitKey,'단원 공통 메모');
+  for (const row of unit.querySelectorAll('.vid')) {
+    const link = row.querySelector(':scope > a');
+    const video = new URL(link.href).searchParams.get('v');
+    row.dataset.noteKey = unitKey + '/video/' + video;
+    addEditor(row.dataset.noteKey,lectureOrders.get(row));
+  }
+  const settings = document.createElement('a');
+  settings.href = '#/settings';
+  settings.textContent = '⚙ 백업 설정';
+  block.append(document.createElement('p'));
+  block.lastElementChild.append(settings);
 }
 const backup = $('backupNotes'), change = $('changeBackup'), message = $('backupMessage');
 const pickerSupported = typeof window.showSaveFilePicker === 'function';
@@ -680,7 +736,7 @@ async function writeBackup(choose) {
       const value = drafts.get(key) ?? localStorage.getItem(key);
       if (value != null) notes[key.slice(prefix.length)] = value;
     }
-    const content = JSON.stringify({format:'comhwal-notes',version:1,notes},null,2);
+    const content = JSON.stringify({format:'comhwal-notes',version:2,notes},null,2);
     const name = '컴활1급-내노트.json';
     if (pickerSupported) {
       const target = choose || !handle ? await window.showSaveFilePicker({suggestedName:name,types:[{description:'컴활 노트',accept:{'application/json':['.json']}}]}) : handle;
@@ -719,22 +775,22 @@ $('notesFile').onchange = async e => {
   if (!file) return;
   try {
     const data = JSON.parse(await file.text());
-    if (data.format !== 'comhwal-notes' || data.version !== 1 || !data.notes || Array.isArray(data.notes) || typeof data.notes !== 'object') throw Error();
+    if (data.format !== 'comhwal-notes' || ![1,2].includes(data.version) || !data.notes || Array.isArray(data.notes) || typeof data.notes !== 'object') throw Error();
     const items = Object.entries(data.notes);
     if (!items.every(([route,value]) => editors.has(prefix + route) && typeof value === 'string')) throw Error();
     if (!items.length) { message.textContent = '이 파일에는 복원할 메모가 없어요.'; return }
-    if (!confirm(items.length + '개 단원의 메모를 파일 내용으로 복원할까요?')) return;
+    if (!confirm(items.length + '개 메모를 파일 내용으로 복원할까요?')) return;
     let count = 0;
     for (const [route,value] of items) {
       const key = prefix + route;
       try { localStorage.setItem(key,value) }
-      catch { message.textContent = count + '개 단원을 복원한 뒤 저장이 중단됐어요. 브라우저 저장 공간을 확인해 주세요.'; return }
+      catch { message.textContent = count + '개 메모를 복원한 뒤 저장이 중단됐어요. 브라우저 저장 공간을 확인해 주세요.'; return }
       drafts.delete(key);
       editors.get(key).value = value;
       if (key === noteKey) { note.value = value; dirty = false }
       count++;
     }
-    message.textContent = count + '개 단원의 메모를 복원했어요.';
+    message.textContent = count + '개 메모를 복원했어요.';
   } catch { message.textContent = '읽을 수 없는 파일이에요. 컴활 노트 백업 JSON 파일을 선택해 주세요.' }
 };
 initBackup();
