@@ -550,40 +550,43 @@ filter.oninput();window.addEventListener('hashchange',route);route();progress();
 #noteOpen,#studyPad button{background:#163451;color:white;border:0;padding:.65rem 1rem;border-radius:.6rem;cursor:pointer}
 #studyPad{box-sizing:border-box;width:min(48rem,calc(100% - 2rem));max-height:65dvh;overflow:auto;background:white;color:#163451;border:2px solid #ae8967;border-radius:.8rem;padding:.8rem;box-shadow:0 6px 26px #142a4140}
 #studyPad header{position:static;display:flex;align-items:center;justify-content:space-between;background:white;color:#163451;padding:0;margin:0 0 .5rem;height:auto}
-.noteGrid{display:grid;grid-template-columns:1.4fr 1fr;gap:.8rem}.noteGrid>*{min-width:0}.noteGrid select,.noteGrid textarea{width:100%;box-sizing:border-box;font:inherit}.noteGrid iframe{display:block;width:100%;aspect-ratio:16/9;border:0;margin:.35rem 0}.noteGrid textarea{height:9rem;padding:.5rem}.noteGrid small{display:block}
+.noteGrid textarea{width:100%;box-sizing:border-box;font:inherit}.noteGrid small{display:block}
 body:has(#studyPad:not([hidden])){padding-bottom:65dvh}body:has(#noteOpen:not([hidden])){padding-bottom:4rem}
-@media(max-width:650px){.noteGrid{grid-template-columns:1fr}.noteGrid iframe{height:min(19dvh,52vw)}.noteGrid textarea{height:4.5rem}}
 .unitNote textarea{display:block;width:100%;box-sizing:border-box;min-height:8rem;padding:.75rem;font:inherit;margin:.6rem 0}.unitNote small{margin-right:1rem}[data-page="#/settings"] button{padding:.6rem .85rem;cursor:pointer}#padGrip{cursor:grab!important;touch-action:none;user-select:none}#padGrip:active{cursor:grabbing!important}#studyPad[hidden],#noteOpen[hidden]{display:none}
 .noteGrid{display:block}
-#lectureTools{margin:.3rem 0 .6rem}
-#lectureTools>summary{cursor:pointer;color:#163451;font-weight:600;padding:.3rem 0}
-#lectureTools[open]>summary{margin-bottom:.4rem}
 .noteGrid textarea{display:block;height:clamp(8rem,36dvh,20rem);resize:vertical;line-height:1.55;padding:.7rem}</style>
-<button id="noteOpen" aria-controls="studyPad" aria-expanded="false" hidden>✎ 강의 보며 필기</button>
-<section id="studyPad" aria-label="강의 보며 필기" hidden><header><button id="padGrip" title="드래그 또는 방향키로 이동" aria-label="필기창 위치 이동 · 방향키 사용 가능">⠿ 필기창 이동</button><button id="noteClose">닫기</button></header>
-<div class="noteGrid"><details id="lectureTools"><summary>강의 열기</summary><select id="lecturePick" aria-label="단원 강의 선택"></select><p><button type="button" id="ytWindow">YouTube 창에서 강의 열기 ↗</button></p><small>PC에서는 영상 창과 필기창을 나란히 놓으세요. 휴대폰에서는 새 탭이나 YouTube 앱이 열릴 수 있어요.</small><details id="inlinePlayer"><summary>이 페이지 안에서 재생 시도</summary><small>강사가 외부 재생을 허용한 영상만 볼 수 있어요.</small><iframe id="lectureFrame" title="단원 강의 영상" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></details><a id="originalVideo" target="_blank" rel="noopener">YouTube 원본 링크 ↗</a><small id="videoStatus" role="status"></small></details><div><label for="lectureNote">이 단원 필기</label><textarea id="lectureNote" placeholder="다시 풀 때 기억할 함수나 작업 순서를 적어 보세요."></textarea><small id="saveState">이 브라우저에 자동 저장됩니다.</small></div></div></section>
+<button id="noteOpen" aria-controls="studyPad" aria-expanded="false" hidden>✎ 내 노트</button>
+<section id="studyPad" aria-label="내 노트" hidden><header><button id="padGrip" title="드래그 또는 방향키로 이동" aria-label="필기창 위치 이동 · 방향키 사용 가능">⠿ 필기창 이동</button><button id="noteClose">닫기</button></header>
+<div class="noteGrid"><div><label for="lectureNote">이 단원 필기</label><textarea id="lectureNote" placeholder="다시 풀 때 기억할 함수나 작업 순서를 적어 보세요."></textarea><small id="saveState">이 브라우저에 자동 저장됩니다.</small></div></div></section>
 <script>
 (()=>{
-const $=s=>document.getElementById(s),open=$('noteOpen'),pad=$('studyPad'),pick=$('lecturePick'),frame=$('lectureFrame'),note=$('lectureNote'),state=$('saveState'),drafts=new Map();
+const $=s=>document.getElementById(s),open=$('noteOpen'),pad=$('studyPad'),note=$('lectureNote'),state=$('saveState'),drafts=new Map();
 let page,noteKey,dirty=false,pos=null,drag=null;
 const grip=$('padGrip'), label=pad.querySelector('label');
 function save(){if(!dirty)return;drafts.set(noteKey,note.value);try{localStorage.setItem(noteKey,note.value);drafts.delete(noteKey);state.textContent='이 브라우저에 저장됨';dirty=false}catch{state.textContent='저장 실패 · 창을 닫기 전에 복사하세요.'}}
 function loadPage(p){noteKey='kfri:lecture-note:'+p.dataset.page;dirty=false;label.textContent='필기 · '+p.querySelector('h1').textContent;state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}}
-function choices(p,keep){const old=keep?pick.selectedOptions[0]:null, options=Array.from(p.querySelectorAll('.vid > a'),a=>new Option(a.textContent.replace(/^▷\s*/,''),a.href));if(old&&!options.some(o=>o.value===old.value))options.unshift(new Option('재생 중 · '+old.text.replace(/^재생 중 · /,''),old.value));pick.replaceChildren(...options);if(old)pick.value=old.value}
-function sync(){save();page=pages.find(p=>!p.hidden);const lesson=!!page.querySelector('.vid > a');open.hidden=!pad.hidden||!lesson;if(lesson){if(!pad.hidden)choices(page,true);loadPage(page);page.querySelector(".unitNote textarea").value=note.value}}
-let videoWin=null,lastVideo='';
-const inline=$('inlinePlayer'),videoStatus=$('videoStatus');
-function embed(){if(!inline.open||pad.hidden){frame.removeAttribute('src');return}frame.src='https://www.youtube.com/embed/'+encodeURIComponent(new URL(pick.value).searchParams.get('v'))}
-inline.ontoggle=embed;
-function play(){const url=new URL(pick.value);$('originalVideo').href=url.href;videoStatus.textContent='';embed()}
-function openVideo(){const url=new URL(pick.value);if(url.origin!=='https://www.youtube.com')return;inline.open=false;save();try{if(!videoWin||videoWin.closed){videoWin=window.open('about:blank','_blank','popup,width=800,height=520,resizable=yes');if(!videoWin)throw Error();videoWin.opener=null;lastVideo=''}if(lastVideo!==url.href){videoWin.location.href=url.href;lastVideo=url.href}videoWin.focus();videoStatus.textContent='강의는 별도 창에 열려 있어요.'}catch{videoStatus.textContent='창이 열리지 않으면 원본 링크를 눌러 주세요.'}}
-$('ytWindow').onclick=openVideo;
+function sync(){save();page=pages.find(p=>!p.hidden);const lesson=!!page.querySelector('.vid > a');open.hidden=!pad.hidden||!lesson;if(lesson){loadPage(page);page.querySelector(".unitNote textarea").value=note.value}}
+let lectureWindow;
+main.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="https://www.youtube.com/watch?"]');
+  if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  try {
+    if (!lectureWindow || lectureWindow.closed) {
+      lectureWindow = window.open('about:blank', '_blank', 'popup,width=800,height=520,resizable=yes');
+      if (!lectureWindow) return;
+      lectureWindow.opener = null;
+    }
+    lectureWindow.location.href = link.href;
+    event.preventDefault();
+    lectureWindow.focus();
+  } catch { lectureWindow = null }
+});
 function place(x,y){if(pad.hidden)return;const r=pad.getBoundingClientRect();pos=[Math.min(Math.max(0,x),Math.max(0,innerWidth-r.width)),Math.min(Math.max(0,y),Math.max(0,innerHeight-r.height))];Object.assign(pad.style,{left:pos[0]+'px',top:pos[1]+'px',bottom:'auto',right:'auto'})}
 function remember(){try{localStorage.setItem('kfri:pad-position',JSON.stringify(pos))}catch{}}
 try{const xy=JSON.parse(localStorage.getItem('kfri:pad-position'));if(Array.isArray(xy)&&xy.length===2&&xy.every(Number.isFinite))pos=xy}catch{}
-open.onclick=()=>{choices(page,false);loadPage(page);play();open.hidden=true;pad.hidden=false;if(pos)place(...pos);open.setAttribute('aria-expanded','true');note.focus({preventScroll:true})};
-pick.onchange=()=>{play();if(!inline.open&&videoWin&&!videoWin.closed)openVideo()};note.oninput=()=>{dirty=true;save();const editor=editors.get(noteKey);if(editor){editor.value=note.value;editor.nextElementSibling.textContent=state.textContent}};
-$('noteClose').onclick=()=>{save();inline.open=false;$('lectureTools').open=false;pad.hidden=true;frame.removeAttribute('src');open.setAttribute('aria-expanded','false');sync();if(!open.hidden)open.focus({preventScroll:true})};
+open.onclick=()=>{loadPage(page);open.hidden=true;pad.hidden=false;if(pos)place(...pos);open.setAttribute('aria-expanded','true');note.focus({preventScroll:true})};
+note.oninput=()=>{dirty=true;save();const editor=editors.get(noteKey);if(editor){editor.value=note.value;editor.nextElementSibling.textContent=state.textContent}};
+$('noteClose').onclick=()=>{save();pad.hidden=true;open.setAttribute('aria-expanded','false');sync();if(!open.hidden)open.focus({preventScroll:true})};
 grip.onpointerdown=e=>{if(!e.isPrimary||e.button!==0)return;const r=pad.getBoundingClientRect();drag=[e.pointerId,e.clientX-r.left,e.clientY-r.top];grip.setPointerCapture(e.pointerId)};
 grip.onpointermove=e=>{if(drag?.[0]===e.pointerId)place(e.clientX-drag[1],e.clientY-drag[2])};
 grip.onlostpointercapture=()=>{drag=null;if(pos)remember()};
