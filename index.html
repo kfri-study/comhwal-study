@@ -557,24 +557,58 @@ filter.oninput();window.addEventListener('hashchange',route);route();progress();
 .noteGrid textarea{width:100%;box-sizing:border-box;font:inherit}.noteGrid small{display:block}
 body:has(#studyPad:not([hidden])){padding-bottom:65dvh}body:has(#noteOpen:not([hidden])){padding-bottom:4rem}
 .unitNote textarea{display:block;width:100%;box-sizing:border-box;min-height:8rem;padding:.75rem;font:inherit;margin:.6rem 0}.unitNote small{margin-right:1rem}[data-page="#/settings"] button{padding:.6rem .85rem;cursor:pointer}#padGrip{cursor:grab!important;touch-action:none;user-select:none}#padGrip:active{cursor:grabbing!important}#studyPad[hidden],#noteOpen[hidden]{display:none}
-.noteGrid{display:block}
+.noteGrid{display:block}.orderButton{display:inline-block;margin-left:.6rem;padding:.25rem .65rem;background:#fff;color:#163451;border:1px solid #ae8967;border-radius:.5rem;font:inherit;font-size:.85rem;cursor:pointer}#lectureOrder{margin:.4rem 0;font-weight:600}
 .noteGrid textarea{display:block;height:clamp(8rem,36dvh,20rem);resize:vertical;line-height:1.55;padding:.7rem}</style>
 <button id="noteOpen" aria-controls="studyPad" aria-expanded="false" hidden>✎ 내 노트</button>
 <section id="studyPad" aria-label="내 노트" hidden><header><button id="padGrip" title="드래그 또는 방향키로 이동" aria-label="필기창 위치 이동 · 방향키 사용 가능">⠿ 필기창 이동</button><button id="noteClose">닫기</button></header>
-<div class="noteGrid"><div><label for="lectureNote">이 단원 필기</label><textarea id="lectureNote" placeholder="다시 풀 때 기억할 함수나 작업 순서를 적어 보세요."></textarea><small id="saveState">이 브라우저에 자동 저장됩니다.</small></div></div></section>
+<div class="noteGrid"><p id="lectureOrder" class="meta"></p><div><label for="lectureNote">이 단원 필기</label><textarea id="lectureNote" placeholder="다시 풀 때 기억할 함수나 작업 순서를 적어 보세요."></textarea><small id="saveState">이 브라우저에 자동 저장됩니다.</small></div></div></section>
 <script>
 (()=>{
 const $=s=>document.getElementById(s),open=$('noteOpen'),pad=$('studyPad'),note=$('lectureNote'),state=$('saveState'),drafts=new Map();
 let page,noteKey,dirty=false,pos=null,drag=null;
 const grip=$('padGrip'), label=pad.querySelector('label');
 function save(){if(!dirty)return;drafts.set(noteKey,note.value);try{localStorage.setItem(noteKey,note.value);drafts.delete(noteKey);state.textContent='이 브라우저에 저장됨';dirty=false}catch{state.textContent='저장 실패 · 창을 닫기 전에 복사하세요.'}}
-function loadPage(p){noteKey='kfri:lecture-note:'+p.dataset.page;dirty=false;label.textContent='필기 · '+p.querySelector('h1').textContent;state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}}
+function loadPage(p){showOrder(p);noteKey='kfri:lecture-note:'+p.dataset.page;dirty=false;label.textContent='필기 · '+p.querySelector('h1').textContent;state.textContent='이 브라우저에 자동 저장됩니다.';try{note.value=drafts.get(noteKey)??localStorage.getItem(noteKey)??''}catch{note.value=drafts.get(noteKey)??'';state.textContent='저장소를 사용할 수 없습니다.'}}
 function sync(){save();page=pages.find(p=>!p.hidden);const lesson=!!page.querySelector('.vid > a');open.hidden=!pad.hidden||!lesson;if(lesson){loadPage(page);page.querySelector(".unitNote textarea").value=note.value}}
+const selectedLectures = new WeakMap();
+const lectureOrders = new WeakMap();
+function showOrder(unit) {
+  const row = selectedLectures.get(unit) || unit.querySelector('.vid');
+  $('lectureOrder').textContent = lectureOrders.get(row) || '';
+}
+function selectLecture(row) {
+  if (!row) return;
+  const unit = row.closest('[data-page]');
+  selectedLectures.set(unit,row);
+  showOrder(unit);
+}
+for (const unit of pages) {
+  const rows = [...unit.querySelectorAll('.vid')];
+  rows.forEach((row,index) => {
+    const link = row.querySelector(':scope > a');
+    if (!link) return;
+    const title = link.textContent.replace(/^▷\s*/,'').trim();
+    lectureOrders.set(row,'이 단원 '+(index+1)+' / '+rows.length+'강 · '+title);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'orderButton';
+    button.textContent = '차순 정보';
+    button.setAttribute('aria-label',title+' 차순 정보와 단원 노트');
+    button.setAttribute('aria-controls','studyPad');
+    link.after(button);
+    button.onclick = () => {
+      selectLecture(row);
+      if (pad.hidden) open.click();
+      else note.focus({preventScroll:true});
+    };
+  });
+}
 let lectureWindow;
 document.addEventListener('click', event => {
   const link = event.target.closest('a[href^="https://www.youtube.com/"]');
   if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
   try {
+    selectLecture(link.closest('.vid'));
     if (!lectureWindow || lectureWindow.closed) {
       const left = Math.max(0, window.screenX);
       const top = Math.max(0, window.screenY);
