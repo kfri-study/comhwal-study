@@ -561,6 +561,7 @@ body:has(#studyPad:not([hidden])){padding-bottom:65dvh}body:has(#noteOpen:not([h
 .noteTiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
 .noteTile{min-width:0;color:#163451;font-size:.88rem}
 .noteTile textarea{margin:.25rem 0 0;padding:.45rem;min-height:0;height:5rem;resize:vertical;border:1px solid #b7c1c9;border-radius:.3rem;background:white}
+.noteTile.commonNote{grid-column:1 / -1}
 .noteTile small{font-size:.75rem}
 @media(max-width:700px){.noteTiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .noteGrid{display:block}.orderButton{display:inline-block;margin-left:.6rem;padding:.25rem .65rem;background:#fff;color:#163451;border:1px solid #ae8967;border-radius:.5rem;font:inherit;font-size:.85rem;cursor:pointer}#lectureOrder{margin:.4rem 0;font-weight:600}
@@ -699,13 +700,15 @@ for (const unit of pages.filter(p => p.dataset.page.startsWith('#/course/'))) {
       }
     };
   }
-  addEditor(unitKey,'단원 공통 메모','공통');
+
   for (const row of unit.querySelectorAll('.vid')) {
     const link = row.querySelector(':scope > a');
     const video = new URL(link.href).searchParams.get('v');
     row.dataset.noteKey = unitKey + '/video/' + video;
-    addEditor(row.dataset.noteKey,link.textContent.replace(/^▷\s*/,''),String(tiles.children.length)+'강');
+    addEditor(row.dataset.noteKey,link.textContent.replace(/^▷\s*/,''),String(tiles.children.length + 1)+'강');
   }
+  addEditor(unitKey,'단원 공통 메모','공통');
+  tiles.lastElementChild.classList.add('commonNote');
   const settings = document.createElement('a');
   settings.href = '#/settings';
   settings.textContent = '⚙ 백업 설정';
